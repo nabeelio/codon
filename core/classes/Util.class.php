@@ -218,7 +218,6 @@ class Util
 			}
 		}
 		
-		
 		if($fromname == '')
 		{
 			$fromname = Config::Get('EMAIL_FROM_NAME');
@@ -229,9 +228,21 @@ class Util
 			}
 		}
 		
+		$return_path_email = Config::Get('EMAIL_RETURN_PATH');
+		if($return_path_email == '')
+		{
+			$return_path_email = $fromemail;
+		}
+		
 		$mail->From     = $fromemail;
 		$mail->FromName = $fromname;
+		
+		// Fix thanks to jm (Jean-Michel)
+		$mail->Sender = $return_path_email;
+		
 		$mail->Mailer = 'mail';
+		$mail->CharSet = 'UTF-8'; #always use UTF-8
+		$mail->IsHTML(true);
 		
 		if(Config::Get('EMAIL_USE_SMTP') == true)
 		{
@@ -247,7 +258,8 @@ class Util
 			}
 		}
 		
-		$message = nl2br($message);
+		$message = "<html><head></head><body>{$message}</body></html>";
+		//$message = nl2br($message);
 		$alt = strip_tags($message);
 		
 		$mail->AddAddress($email); 
@@ -256,30 +268,5 @@ class Util
 		$mail->AltBody = $alt;
 		
 		$mail->Send();
-		
-		/*if($fromname != '' && $fromemail != '')
-			$headers = "From: $fromname <$fromemail>\r\n";
-		else
-			$headers = "From: ".SITE_NAME." <".ADMIN_EMAIL.">\r\n";
-			
-		$headers .= "MIME-Version: 1.0\r\n";
-		$boundary = uniqid("PHPVMSMAILER");
-		$headers .= "Content-Type: multipart/alternative" .
-		"; boundary = $boundary\r\n\r\n";
-		$headers .= "This is a MIME encoded message.\r\n\r\n";
-		//plain text version of message
-		$headers .= "--$boundary\r\n" .
-		"Content-Type: text/plain; charset=ISO-8859-1\r\n" .
-		"Content-Transfer-Encoding: base64\r\n\r\n";
-		$headers .= chunk_split(base64_encode($message));
-
-		//HTML version of message
-		$message = nl2br($message);
-		$headers .= "--$boundary\r\n" .
-					"Content-Type: text/html; charset=ISO-8859-1\r\n" .
-					"Content-Transfer-Encoding: base64\r\n\r\n";
-		$headers .= chunk_split(base64_encode($message));
-
-		@mail($email, $subject, '', $headers);*/
 	}
 }
