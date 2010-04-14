@@ -39,22 +39,6 @@
 
 include 'core/codon.config.php';
 
-# Check if we're in maintenance mode, disable the site to non-admins
-if(Config::Get('MAINTENANCE_MODE') == true  
-	&& !Auth::LoggedIn() 
-	&& !PilotGroups::group_has_perm(Auth::$usergroups, FULL_ADMIN))
-{
-	echo '<html><head><title>Down for maintenance - '.SITE_NAME.'</title></head><body>';
-	Debug::showCritical(Config::Get('MAINTENANCE_MESSAGE'), 'Down for maintenance');
-	echo '</body></html>';
-	die();
-}
-
-if(Config::Get('XDEBUG_BENCHMARK'))
-{
-	$memory_start = xdebug_memory_usage();
-}
-
 $BaseTemplate = new TemplateSet;
 
 # Load the main skin
@@ -93,13 +77,3 @@ else
 # Force connection close
 DB::close();
 
-if(Config::Get('XDEBUG_BENCHMARK'))
-{
-	$run_time = xdebug_time_index();
-	$memory_end = xdebug_memory_usage();
-
-
-	echo 'TOTAL MEMORY: '.($memory_end - $memory_start).'<br />';
-	echo 'PEAK: '.xdebug_peak_memory_usage().'<br />';
-	echo 'RUN TIME: '.$run_time.'<br />';
-}
