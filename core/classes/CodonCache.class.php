@@ -46,10 +46,11 @@ class CodonCache
 		/*	These are the default settings, which will get merged with
 			the incoming settings passed to this function */
 		self::$settings = array(
-			'active' => true,					/* enabled by default, self::setStatus() */
+			'active' => false,					/* enabled by default, self::setStatus() */
 			'engine' => 'file',					/* "file" or "apc" */
 			'location' => dirname(__FILE__),	/* For the "file" engine type */
 			'prefix' => __CLASS__,				/* Specify a prefix for any entries */
+			'suffix' => '.cache',
 			
 			/*	Setup different profiles. There must be a "default" one.
 				You can pass a specific "profile" to use in the write() function
@@ -75,21 +76,22 @@ class CodonCache
 			),
 		);
 		
-		if(is_array($settings))
-		{
+		if(is_array($settings)) {
 			self::$settings = array_merge(self::$settings, $settings);
 		}
 		
-		if(self::$settings['engine'] == 'file')
-		{
+		if(self::$settings['engine'] == 'file') {
 			# Add a trailing slash
-			if(substr(self::$settings['location'], -1, 1) != '/')
-			{
+			if(substr(self::$settings['location'], -1, 1) != '/') {
 				self::$settings['location'] .= '/';
 			}
 		}
 	}
 	
+	public static function setEnabled($bool)
+	{
+		self::setStatus($bool);
+	}
 	
 	/**
 	 * Enable or disable the caching engine
@@ -131,41 +133,36 @@ class CodonCache
 	 */
 	public static function read($key)
 	{
-		if(self::$settings['active'] === false || $key == '')
-		{
+		if(self::$settings['active'] === false || $key == '') {
 			return false;
 		}
 		
-		$key = self::$settings['prefix'].$key;
-		if(self::$settings['engine'] == 'file')
-		{
-			if(!file_exists(self::$settings['location'].$key))
-			{
+		$key = self::$settings['prefix'].$key.self::$settings['suffix'];
+		if(self::$settings['engine'] == 'file') {
+			
+			if(!file_exists(self::$settings['location'].$key)) {
 				return false;
 			}
 			
 			$contents = file(self::$settings['location'].$key);
 			
 			# See if the current time is greater than that cutoff
-			if(time() > $contents[0])
-			{
+			if(time() > $contents[0]) {
 				return false;
 			}
 			
 			# Then return the unserialized version of the store
 			return unserialize($contents[1]);
-		}
-		elseif(self::$settings['engine'] == 'apc')
-		{
+
+		} elseif(self::$settings['engine'] == 'apc') {
+			
 			/*$expire = apc_fetch($key.'_expire');
-			if(time() > $expire)
-			{
+			if(time() > $expire) {
 				return false;
 			}*/
 			
 			$value = apc_fetch($key, $success);
-			if($success == false)
-			{
+			if($success == false) {
 				return false;
 			}
 					
@@ -187,25 +184,23 @@ class CodonCache
 	 */
 	public static function write($key, $value, $profile = 'default')
 	{
-		if(self::$settings['active'] === false || $key == '')
-		{
+		if(self::$settings['active'] === false || $key == '') {
 			return false;
 		}
 		
-		$key = self::$settings['prefix'].$key;
+		$key = self::$settings['prefix'].$key.self::$settings['suffix'];
 		$ttl = strtotime(self::$settings['profiles'][$profile]['duration']);
 		$value = serialize($value);
 		
 		// Now actually save it
-		if(self::$settings['engine'] == 'file')
-		{
+		if(self::$settings['engine'] == 'file') {
+			
 			/*	Save the expire time on one line, and then the serialized
 				value on the second line. For the check in read() */
 			$value = $ttl.PHP_EOL.$value;
 			file_put_contents(self::$settings['location'].$key, $value);
-		}
-		elseif(self::$settings['engine'] == 'apc')
-		{
+		
+		} elseif(self::$settings['engine'] == 'apc') {
 			$seconds = $ttl - time();
 			/*apc_store($key.'_expire', $ttl, 0);
 			apc_store($key, $ttl, $seconds);*/
@@ -225,21 +220,18 @@ class CodonCache
 	 */
 	public static function delete($key)
 	{
-		if(self::$settings['active'] === false || $key == '')
-		{
+		if(self::$settings['active'] === false || $key == '') {
 			return false;
 		}
 		
-		$key = self::$settings['prefix'].$key;
-		if(self::$settings['engine'] == 'file')
-		{
-			if(file_exists(self::$settings['location'].$key))
-			{
+		$key = self::$settings['prefix'].$key.self::$settings['suffix'];
+		if(self::$settings['engine'] == 'file') {
+			
+			if(file_exists(self::$settings['location'].$key)) {
 				unlink(self::$settings['location'].$key);
 			}
-		}
-		elseif(self::$settings['engine'] == 'apc')
-		{
+
+		} elseif(self::$settings['engine'] == 'apc') {
 			// Simple :)
 			apc_delete($key);
 		}

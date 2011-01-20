@@ -24,6 +24,9 @@
  * @copyright Copyright (c) 2008-2010, Nabeel Shahzad
  * @link http://github.com/nshahzad/ezdb
  * @license MIT License
+ * 
+ * 
+ * Based on ezSQL by Justin Vincent: http://justinvincent.com/docs/ezsql/ez_sql_help.htm
  */
 
 /**********************************************************************
@@ -97,10 +100,10 @@ class ezDB_Base
 	
 	public $table_prefix = '';
 	
-	public $dbuser = false;
-	public $dbpassword = false;
-	public $dbname = false;
-	public $dbhost = false;
+	protected $dbuser = false;
+	protected $dbpassword = false;
+	protected $dbname = false;
+	protected $dbhost = false;
 	public $result;
 	
 	public $default_type = OBJECT;
@@ -371,6 +374,12 @@ class ezDB_Base
 		
 		return true;
 	}
+
+
+	public function num_queries()
+	{
+		return $this->num_queries;
+	}
 			
 	/**
 	 * Get a single column/variable
@@ -470,63 +479,36 @@ class ezDB_Base
 		return '\''.$value.'\'';
 	}	
 	
+	
 	/**
-	 * Build a SELECT query, specifying the table, fields and extra conditions
+	 * Build a SELECT SQL Query. All values except for
+	 *  numeric and NOW() will be put in quotes
+	 * 
+	 * Values are NOT escaped
 	 *
-	 * @param array $data
-	 * 
-	 * $data = array(
-	 *		'table' => 'Tablename',
-	 *		'fields' => array(fields),
-	 *		'where' => array(fields),
-	 *		'order' => 'field ASC',
-	 *		'group' => 'field',
-	 * );
-	 * 
-	 * @return type Array of results
+	 * @param string $table Table to build update on
+	 * @param array $fields Associative array, with [column]=value
+	 * @param string $cond Extra conditions, without WHERE
+	 * @return array Results
 	 *
 	 */
-	public function quick_select($params)
+	public function quick_select($table, $fields='', $cond='')
 	{
-		if(!is_array($params)) return;
-		if($params['table'] == '') return false;
-					
+		if($table == '') return false;
+
 		$sql = 'SELECT ';
-		
-		if(is_array($params['fields']))
+		$list = array();
+		if(is_array($fields))
 		{
-			$sql .= implode(',', $params['fields']);
-		}
-		else
-		{
-			$sql .= $params['fields'];
+			$fields = implode(',', $fields);
 		}
 		
-		$sql .= ' FROM '.$params['table'];
+		$sql .= $fields;
+		$sql .= ' FROM '.$table;
+
+		$sql .= $this->build_where($cond);
 		
-		if(!empty($params['where']))
-		{
-			if(is_array($params['where']))
-			{
-				$sql .= $this->build_where($params['where']);
-			}
-			else
-			{
-				$sql .= $params['where'];
-			}
-		}
-			
-		if(!empty($params['group']))
-		{
-			$sql .= ' GROUP BY '.$params['group'];
-		}
-		
-		if(!empty($params['order']))
-		{
-			$sql .= ' ORDER BY '.$params['order'];
-		}
-		
-		return $this->get_results($sql, $this->default_type);
+		return	$this->get_results($sql);
 	}
 	
 	
@@ -548,31 +530,40 @@ class ezDB_Base
 		
 		$sql = 'INSERT '. $flags .' INTO '.$table.' ';
 		
+		$cols = array();
+		$col_values = array();
+
 		if(is_array($allowed_cols) && count($allowed_cols) > 0)
 		{
 			foreach($allowed_cols as $column)
 			{
-				$cols .= $column.',';
-				$col_values .= $this->quote($fields[$column]).',';
+				$cols[] = "`{$column}`";
+				$col_values[] = "'".$this->escape($fields[$column])."'";
+
+				//$cols .= $column.',';
+				//$col_values .= $this->escape($fields[$column]).',';
 			}
 		}
 		else
 		{
 			if(is_array($fields))
 			{
-				foreach($fields as $key=>$value)
+				foreach($fields as $key => $value)
 				{
 					// build both strings
-					$cols .= $key.',';
-					$col_values .= $this->quote($value).',';
+					$cols[] = "`{$key}`";
+
+					//$cols .= '`'.$key.'`, ';
+
+					if($value == 'NOW()')
+						$col_values[] = 'NOW()';
+					else
+						$col_values[] = "'".$this->escape($value)."'";
 				}
 			}
 		}
-		
-		$cols[strlen($cols)-1] = ' ';
-		$col_values[strlen($col_values)-1] = ' ';
-		
-		$sql .= '('.$cols.') VALUES ('.$col_values.')';
+				
+		$sql .= '('.implode(', ', $cols).') VALUES ('.implode(', ', $col_values).')';
 			
 		return $this->query($sql);
 	}
@@ -602,48 +593,108 @@ class ezDB_Base
 			/* Passed an array with the allowed columns */
 			if(is_array($allowed_cols) && count($allowed_cols) > 0)
 			{
+				$allowed = array();
 				foreach($allowed_cols as $column)
 				{
-					$sql .= $column.'=';
-					$sql .= $this->quote($fields[$column]).',';
-				}				
+					$allowed[$column] = $fields[$column];
+				}
+
+				$sql .= $this->build_update($allowed);
 			}
 			/* No specific columns, just process all the $fields */
 			else
 			{
-				foreach($fields as $key=>$value)
-				{
-					$sql.= "$key=";
-					$sql .= $this->quote($value).',';
-				}
+				$sql.= $this->build_update($fields);
 			}
-			
-			$sql = substr($sql, 0, strlen($sql)-1);
 		}
 		else
 		{
 			$sql .= $fields;
 		}
 		
-		$cols[strlen($cols)-1] = ' ';
-		$col_values[strlen($col_values)-1] = ' ';
-		
-		if($cond != '')
-			$sql .= ' WHERE '.$cond;
+		$sql .= $this->build_where($cond);
 		
 		return $this->query($sql);
+	}
+
+	/**
+	 * Build a SELECT query, specifying the table, fields and extra conditions
+	 *
+	 * @param array $data
+	 * 
+	 * $data = array(
+	 *		'table' => 'Tablename',
+	 *		'fields' => array(fields),
+	 *		'where' => array(fields),
+	 *		'order' => 'field ASC',
+	 *		'group' => 'field',
+	 * );
+	 * 
+	 * @return type Array of results
+	 *
+	 */
+	public function build_select($params)
+	{
+		if(!is_array($params)) return;
+		if($params['table'] == '') return false;
+					
+		$sql = 'SELECT ';
+		
+		if(is_array($params['fields']))
+		{
+			$sql .= implode(',', $params['fields']);
+		}
+		else
+		{
+			$sql .= $params['fields'];
+		}
+		
+		$sql .= ' FROM '.$params['table'];
+		
+		if(!empty($params['where']))
+		{
+			$sql .= $this->build_where($params['where']);
+		}
+			
+		if(!empty($params['group']))
+		{
+			$sql .= ' GROUP BY '.$params['group'];
+		}
+		
+		if(!empty($params['order']))
+		{
+			$sql .= ' ORDER BY '.$params['order'];
+		}
+		
+		if(!empty($params['limit']))
+		{
+			$sql .= ' LIMIT '.$params['limit'];
+		}
+		
+		return $sql;
 	}
 	
 	public function build_where($fields)
 	{
-		$sql='';
-		
-		if(!is_array($fields) || empty($fields))
+		if(count($fields) === 0 || empty($fields) === true)
 		{
-			return false;
+			return '';
+		}
+
+		// It's a string
+		if(!is_array($fields) && !is_object($fields))
+		{
+			$fields = str_ireplace('WHERE', '', $fields);
+			return ' WHERE '.$fields;
 		}
 		
-		$sql .= ' WHERE ';
+		// Cast it to an array...
+		if(is_object($fields))
+		{
+			$fields = (array) $fields;
+		}
+
+		$sql = ' WHERE ';
 		
 		$where_clauses = array();
 		foreach($fields as $column_name => $value)
@@ -656,7 +707,7 @@ class ezDB_Base
 				$value_list = array();
 				foreach($value as $in)
 				{
-					$in = DB::escape($in);
+					$in = $this->escape($in);
 					$value_list[] = "'{$in}'";
 				}
 				
@@ -675,7 +726,7 @@ class ezDB_Base
 				# If there's a % (wildcard) in there, so it should use a LIKE
 				if(substr_count($value, '%') > 0)
 				{
-					$value = DB::escape($value);
+					$value = $this->escape($value);
 					$where_clauses[] = "{$column_name} LIKE '{$value}'";
 					continue;
 				}
@@ -687,7 +738,7 @@ class ezDB_Base
 					continue;
 				}
 				
-				$value = DB::escape($value);
+				$value = $this->escape($value);
 				$where_clauses[] = "{$column_name} = '{$value}'";
 			}
 		}
@@ -695,8 +746,54 @@ class ezDB_Base
 		$sql.= implode(' AND ', $where_clauses).' ';
 		unset($where_clauses);
 		
-		return $sql;
+		return $sql;		
+	}
+	
+	public function build_update($fields)
+	{
+		if(!is_array($fields))
+		{
+			return $fields;
+		}
 		
+		$sql = '';
+		$sql_cols = array();
+		
+		foreach($fields as $col => $value)
+		{
+			/* If there's a value just added */
+			if(is_int($col))
+			{
+				$sql_cols[] = $value;
+				continue;
+			}
+			
+			$tmp = "`{$col}`=";
+			
+			if(is_int($value))
+			{
+				$tmp .= $value;
+			}
+			else
+			{
+				if($value === "NOW()")
+				{
+					$tmp.='NOW()';
+				}
+				else
+				{
+					$value = $this->escape($value);
+					$tmp.="'{$value}'";
+				}
+			}
+			
+			$sql_cols[] = $tmp;
+		}
+		
+		$sql .= implode(', ', $sql_cols);
+		unset($sql_cols);
+		
+		return $sql;
 	}
 		
 	/**
@@ -777,6 +874,18 @@ class ezDB_Base
 			}
 		}
 	}
+
+	/**
+	 * Return all of the columns
+	 * 
+	 * @return array Column information
+	 */
+	public function get_cols()
+	{
+		
+		return $this->col_info;
+
+	}
 		
 	/**
 	 * Get metadata regarding a column, about a column in the last query
@@ -820,7 +929,7 @@ class ezDB_Base
 	 */
 	public function store_cache($query,$is_insert)
 	{
-		if($this->cache_queries === false || $is_insert)
+		if($this->cache_query === false || $is_insert)
 			return false;
 			
 		$result_cache = array('col_info' => $this->col_info,
@@ -830,7 +939,7 @@ class ezDB_Base
 		
 		if($this->cache_type == 'memcache')
 		{
-			
+			// @TODO: memcache 
 		}
 		elseif($this->cache_type == 'apc')
 		{
@@ -840,13 +949,20 @@ class ezDB_Base
 		{
 			$cache_file = $this->cache_dir.'/'.md5($query);
 
-			if ( ! is_dir($this->cache_dir) )
+			if (!is_dir($this->cache_dir) )
 			{
 				$this->register_error("Could not open cache dir: $this->cache_dir");
 				return false;
 			}
-																			
-			error_log ( serialize($result_cache), 3, $cache_file);
+			
+			$ttl = strtotime('+'.$this->cache_timeout.' seconds');
+			$value = $ttl.PHP_EOL.serialize($result_cache);
+
+			$fp = fopen($cache_file, 'w');
+			flock($fp);
+			fwrite($fp, $value);
+			fclose($fp);
+
 		}
 		
 		return true;		
@@ -862,13 +978,13 @@ class ezDB_Base
 	 */
 	public function get_cache($query)
 	{
-		if($this->cache_queries === false || $is_insert)
+		if($this->cache_query === false || $is_insert)
 			return false;
 		
 		# Check if we want to us memcache, and whether it's available
 		if($this->cache_type == 'memcache')
 		{
-			
+			// @TODO: memcache 
 		}
 		elseif($this->cache_type == 'apc')
 		{
@@ -883,15 +999,16 @@ class ezDB_Base
 			// Try to get previously cached version
 			if (file_exists($cache_file) )
 			{
-				// Only use this cache file if less than 'cache_timeout' (hours)
-				if (time() - filemtime($cache_file) > $this->cache_timeout )
+				$contents = file($cache_file);
+			
+				# See if the current time is greater than that cutoff
+				if(time() > $contents[0])
 				{
-					unlink($cache_file);
+					return false;
 				}
-				else
-				{
-					$result_cache = unserialize(file_get_contents($cache_file));
-				}
+			
+				# Then return the unserialized version of the store
+				$result_cache = unserialize($contents[1]);
 			}
 		}	
 		

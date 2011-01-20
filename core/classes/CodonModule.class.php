@@ -44,6 +44,7 @@ class CodonModule
 {
 	public static $post;
 	public static $get;
+	public static $controller;
 	public static $activeModule;
 	public $action;
 	
@@ -66,6 +67,7 @@ class CodonModule
 		$this->post = Vars::$post;
 		$this->get = CodonRewrite::$get;
 		$this->request = Vars::$request;
+		$this->controller = CodonRewrite::$controller;
 			
 		$this->init = true;
 		$this->activeModule = MainController::$activeModule;
@@ -108,5 +110,13 @@ class CodonModule
 		$instance = FirePHP::getInstance(true);
 		$args = func_get_args();
 		return call_user_func_array(array($instance,'fb'),$args);
+	}
+	
+	public function callHook($hook_name)
+	{
+		if(file_exists(SITE_ROOT.'/core/hooks/'.$hook_name))
+		{
+			include SITE_ROOT.'/core/hooks/'.$hook_name;
+		}
 	}
 }

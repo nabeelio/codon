@@ -41,8 +41,8 @@
 class CodonRewrite 
 {
 	public static $rewrite_rules = array();
-	public static $get;
-	
+	public static $get;	
+	public static $controller;
 	public static $current_module;
 	public static $current_action;
 	
@@ -51,16 +51,101 @@ class CodonRewrite
 	public static $peices;
 	public static $run=false;
 	
+	
+	/**
+	 * Process the rewrite rules, store the results 
+	 * into self::$get
+	 */
+	public static function ProcessRewrite()
+	{
+		$URL = $_SERVER['REQUEST_URI'];
 		
+		# Get everything after the .php/ and before the ?
+		$params = explode('.php/', $URL);
+		$preg_match = $params[1];
+			
+		$params = explode('?', $preg_match);
+		$split_parameters = $params[0];
+				
+		# Now check if there's anything there (we didn't just have
+		#	index.php?query_string=...
+		# If that's all, then we grab a configuration setting that
+		#	specifies the default rewrite, ie: news/showall
+		#	Which would eq. passing index.php/news/showall
+		if($split_parameters == '')
+		{
+			$split_parameters = CODON_DEFAULT_MODULE;
+		}		
+		
+		# Now we split it all out, and store the peices
+		self::$peices = explode('/', $split_parameters);
+		$module_name = strtolower(self::$peices[0]);
+		
+		if($module_name == '') # If it's blank, check $_GET
+		{
+			$module_name = $_GET['module'];
+		}
+		
+		self::$current_module = $module_name;
+		self::$current_action = strtolower(self::$peices[1]);
+		
+		unset(self::$peices[0]);
+		unset(self::$peices[1]);
+		
+		# Restored, some addons are relying on this
+		$_GET['module'] = $module_name;
+				
+		self::$controller = new stdClass;
+		self::$controller->module = $module_name;
+		self::$controller->controller = $module_name;
+		self::$controller->function = self::$current_action;
+		self::$controller->action = self::$current_action;
+		self::$controller->page = self::$current_action;
+		
+		self::$params = array();
+		foreach(self::$peices as $peice)
+		{
+			self::$params[] = $peice;
+		}
+		
+		# Create the object to hold all of our stuff
+		self::$get = new stdClass;
+		//self::$get->action = self::$current_action;
+					
+		# If we haven't specified specific rules for a module,
+		#	Then we use the rules we made for "default"
+		if(!array_key_exists($module_name, self::$rewrite_rules))
+		{
+			$module_name = 'default';
+		}
+		
+		# This parses now the rules for a specific module
+		//self::ProcessModuleRewrite($module_name);
+				
+		# And this tacks on our $_GET rules
+		parse_str($_SERVER['QUERY_STRING'], $get_extra);
+		$_GET = array_merge($_GET, $get_extra);
+			
+		# Add the $_GET to our object
+		foreach($_GET as $key=>$value)
+		{
+			self::$get->$key = $value;
+		}
+		
+		self::$run = true;	
+	}
+	
 	/**
 	 * Add a rewrite rule for the module
+	 * 
+	 * @deprecated
 	 *
 	 * @param string $module Module name
 	 * @param array $params The rewrite rules in order array('parameter1'=>'type', 'parameter2')
 	 *			Type can be 'string', 'int', 'float', optional, blank defaults to string
 	 * @return mixed This is the return value description
 	 */
-	public static function AddRule($module, $params)
+	/*public static function AddRule($module, $params)
 	{	
 		# Clean
 		$set_params=array();
@@ -86,105 +171,21 @@ class CodonRewrite
 		if(self::$run == true)
 		{
 			# Reprocess the rules
-			self::ProcessModuleRewrite($module);
+			#self::ProcessModuleRewrite($module);
 		}
-	}
-	
-	/**
-	 * Process the rewrite rules, store the results 
-	 * into self::$get
-	 */
-	public static function ProcessRewrite()
-	{
-		$URL = $_SERVER['REQUEST_URI'];
-		
-		# Get everything after the .php/ and before the ?
-		$params = explode('.php/', $URL);
-		$preg_match = $params[1];
-			
-		$params = explode('?', $preg_match);
-		$split_parameters = $params[0];
-				
-		# Now check if there's anything there (we didn't just have
-		#	index.php?query_string=...
-		# If that's all, then we grab a configuration setting that
-		#	specifies the default rewrite, ie: news/showall
-		#	Which would eq. passing index.php/news/showall
-		if($split_parameters == '')
-		{
-			$split_parameters = Config::Get('DEFAULT_MODULE');
-		}		
-		
-		# Now we split it all out, and store the peices
-		self::$peices = explode('/', $split_parameters);
-			
-		$module_name = strtolower(self::$peices[0]);
-		
-		if($module_name == '') # If it's blank, check $_GET
-		{
-			$module_name = $_GET['module'];
-		}
-		
-		self::$current_module = $module_name;
-		self::$current_action = strtolower(self::$peices[1]);
-		
-		//echo '<pre>'; print_r(self::$peices); echo '</pre>';
-		
-		$_GET['module'] = $module_name;
-		$_GET['action'] = self::$current_action;
-		$_GET['page'] = self::$current_action;
-		
-		unset(self::$peices[0]);
-		unset(self::$peices[1]);
-		self::$params = array();
-		
-		foreach(self::$peices as $peice)
-		{
-			self::$params[] = $peice;
-		}
-		
-		# Create the object to hold all of our stuff
-		self::$get = new stdClass;
-		self::$get->action = self::$current_action;
-					
-		# If we haven't specified specific rules for a module,
-		#	Then we use the rules we made for "default"
-		if(!array_key_exists($module_name, self::$rewrite_rules))
-		{
-			$module_name = 'default';
-		}
-		
-		# This parses now the rules for a specific module
-		self::ProcessModuleRewrite($module_name);
-				
-		# And this tacks on our $_GET rules
-		parse_str($_SERVER['QUERY_STRING'], $get_extra);
-		$_GET = array_merge($_GET, $get_extra);		
-			
-		# Add the $_GET to our object
-		foreach($_GET as $key=>$value)
-		{
-			self::$get->$key = $value;
-		}
-		
-		// Backwards compat
-		self::$get->page = self::$current_action;
-
-		self::$run = true;	
-	}
-	
-	
-	
+	}*/
 	
 	/**
 	 * Process an individual module based on the latest rules	
 	 * DEPRECATED
+	 * 
+	 * @deprecated
 	 *
 	 * @param string $module_name Name of the module to re-process
 	 * @return mixed This is the return value description
 	 *
 	 */
-	public static function ProcessModuleRewrite($module_name)
+	/*public static function ProcessModuleRewrite($module_name)
 	{
 		$i=1;
 		
@@ -218,5 +219,5 @@ class CodonRewrite
 				$_GET[$key] = $val;
 			}
 		}
-	}
+	}*/
 }

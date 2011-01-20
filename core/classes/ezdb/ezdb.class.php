@@ -24,15 +24,9 @@
  * @copyright Copyright (c) 2008-2010, Nabeel Shahzad
  * @link http://github.com/nshahzad/ezdb
  * @license MIT License
+ * 
+ * Based on ezSQL by Justin Vincent: http://justinvincent.com/docs/ezsql/ez_sql_help.htm
  */
-
-function ezdb_autoloader($class_name)
-{
-	$class_name = strtolower($class_name);
-	include dirname(__FILE__).DIRECTORY_SEPARATOR.$class_name.'.class.php';
-}
-
-spl_autoload_register('ezdb_autoloader');
 
 /**
  * This is the < PHP 5.3 version
@@ -93,8 +87,10 @@ class DB
 	 * @return boolean
 	 */
 	public static function init($type='mysql')
-	{		
-		$class_name = 'ezdb_'.$type;
+	{
+		$class_name = strtolower('ezdb_'.$type);
+		include dirname(__FILE__).DIRECTORY_SEPARATOR.$class_name.'.class.php';
+		
 		if(!self::$DB = new $class_name())
 		{
 			self::$error = self::$DB->error;
@@ -226,6 +222,14 @@ class DB
 		self::$connected = true;
 		return true;
 	}
+
+	public static function num_queries()
+	{
+		
+		return self::$DB->num_queries();
+
+	}
+
 	
 	/**
 	 * Select/Change the active database. It's called from
@@ -279,11 +283,10 @@ class DB
 	 * @param constant $type
 	 * @return resultset
 	 */
-	public static function quick_select($params)
+	public static function quick_select($table, $fields='', $cond='')
 	{
 		self::$DB->throw_exceptions = self::$throw_exceptions;
-		
-		return self::$DB->quick_select($params);
+		return self::$DB->quick_select($table, $fields, $cond);
 	}
 	
 	/**
@@ -316,6 +319,14 @@ class DB
 		return self::$DB->quick_update($table, $fields, $cond, $allowed_cols);
 	}
 	
+	/**
+	 * Build a SELECT statement
+	 *
+	 */
+	public static function build_select($params)
+	{
+		return self::$DB->build_select($params);
+	}
 	
 	/**
 	 * Build a WHERE clause for an SQL statement with supplied parameters
@@ -339,50 +350,7 @@ class DB
 	 */
 	public static function build_update($fields)
 	{
-		if(!is_array($fields) || empty($fields))
-		{
-			return false;
-		}
-		
-		$sql = '';
-		$sql_cols = array();
-		
-		foreach($fields as $col => $value)
-		{
-			
-			/* If there's a value just added */
-			if(is_int($col))
-			{
-				$sql_cols[] = $value;
-				continue;
-			}
-			
-			$tmp = "`{$col}`=";
-			
-			if(is_int($value))
-			{
-				$tmp .= $value;
-			}
-			else
-			{
-				if($value === "NOW()")
-				{
-					$tmp.='NOW()';
-				}
-				else
-				{
-					$value = DB::escape($value);
-					$tmp.="'{$value}'";
-				}
-			}
-			
-			$sql_cols[] = $tmp;
-		}
-		
-		$sql .= implode(', ', $sql_cols);
-		unset($sql_cols);
-		
-		return $sql;
+		return self::$DB->build_update($fields);
 	}
 	
 	/**
@@ -500,6 +468,14 @@ class DB
 		}
 		
 		return $ret; //self::$insert_id;
+	}
+
+	/** 
+	 * Return all of the columns
+	 */
+	public static function get_cols()
+	{
+		return self::$DB->get_cols();
 	}
 	
 	/**

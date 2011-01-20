@@ -24,6 +24,10 @@
  * @copyright Copyright (c) 2008-2010, Nabeel Shahzad
  * @link http://github.com/nshahzad/ezdb
  * @license MIT License
+ * 
+ * 
+ * Based on ezSQL by Justin Vincent: http://justinvincent.com/docs/ezsql/ez_sql_help.htm
+ * 
  */
  
 /**********************************************************************
@@ -33,6 +37,7 @@
 *  Desc..: Oracle 8i/9i component (part of ezDB databse abstraction library)
 *
 */
+include_once dirname(__FILE__).'/ezdb_base.class.php';
 
 class ezDB_oracle extends ezDB_Base
 {

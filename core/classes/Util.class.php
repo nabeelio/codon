@@ -99,10 +99,10 @@ class Util
 	 */
 	public static function GetDaysCompact($days)
 	{
-		$all_days = array('Su', 'M', 'T', 'W', 'Th', 'F', 'S', 'Su');
+		#$all_days = array('Su', 'M', 'T', 'W', 'Th', 'F', 'S', 'Su');
+		$all_days = Config::Get('DAYS_COMPACT');
 
-		foreach($all_days as $index=>$day)
-		{
+		foreach($all_days as $index=>$day) {
 			$days = str_replace($index, $day.' ', $days);
 		}
 		
@@ -115,8 +115,7 @@ class Util
 	public static function GetDaysLong($days)
 	{
 		$all_days = Config::Get('DAYS_LONG');
-		foreach($all_days as $index=>$day)
-		{
+		foreach($all_days as $index=>$day) {
 			$days = str_replace($index, $day.' ', $days);
 		}
 		
@@ -151,13 +150,11 @@ class Util
 		
 		# Check if the minutes are fractions
 		# If they are (minutes > 60), convert to minutes
-		if($t1_ex[1] > 60)
-		{
+		if($t1_ex[1] > 60) {
 			$t1_ex[1] = intval((intval($t1_ex[1])*60)/100);
 		}
 		
-		if($t2_ex[1] > 60)
-		{
+		if($t2_ex[1] > 60) {
 			$t2_ex[1] = intval((intval($t2_ex[1])*60)/100);
 		}
 		
@@ -168,10 +165,9 @@ class Util
 					
 		//self::$trace[] = "Added, before conversion: $hours:$mins";
 			
-		while($mins >= 60)
-		{
+		while($mins >= 60) {
 			$hours++;
-			$mins -= 60;		
+			$mins -= 60;
 		}
 				
 		//self::$trace[] = "Minutes left: $mins";
@@ -204,33 +200,30 @@ class Util
 	 */
 	public static function SendEmail($email, $subject, $message, $fromname='', $fromemail='')
 	{
+		ob_start();
 		# PHPMailer
 		include_once(SITE_ROOT.'/core/lib/phpmailer/class.phpmailer.php');
 		$mail = new PHPMailer(); 
 		  
-		if($fromemail == '')
-		{
+		if($fromemail == '') {
 			$fromemail = Config::Get('EMAIL_FROM_ADDRESS');
 			
-			if($fromemail == '')
-			{
+			if($fromemail == '') {
 				$fromemail = ADMIN_EMAIL;
 			}
 		}
 		
-		if($fromname == '')
-		{
+		if($fromname == '') {
+			
 			$fromname = Config::Get('EMAIL_FROM_NAME');
 			
-			if($fromname == '')
-			{
+			if($fromname == '') {
 				$fromname = SITE_NAME;
 			}
 		}
 		
 		$return_path_email = Config::Get('EMAIL_RETURN_PATH');
-		if($return_path_email == '')
-		{
+		if($return_path_email == '') {
 			$return_path_email = $fromemail;
 		}
 		
@@ -244,19 +237,21 @@ class Util
 		$mail->CharSet = 'UTF-8'; #always use UTF-8
 		$mail->IsHTML(true);
 		
-		if(Config::Get('EMAIL_USE_SMTP') == true)
-		{
+		if(Config::Get('EMAIL_USE_SMTP') == true) {
+			
 			$mail->IsSMTP();
 
 			$mail->Host = Config::Get('EMAIL_SMTP_SERVERS');
 			$mail->Port = Config::Get('EMAIL_SMTP_PORT');
 			
-			if(Config::Get('EMAIL_SMTP_USE_AUTH') == true)
-			{
+			if(Config::Get('EMAIL_SMTP_USE_AUTH') == true) {
 				$mail->Username = Config::Get('EMAIL_SMTP_USER');
 				$mail->Password = Config::Get('EMAIL_SMTP_PASS');
 			}
 		}
+		
+		$mail->SetFrom($fromemail, $fromname);
+		$mail->AddReplyTo($fromemail, $fromname);
 		
 		$message = "<html><head></head><body>{$message}</body></html>";
 		//$message = nl2br($message);
@@ -268,5 +263,6 @@ class Util
 		$mail->AltBody = $alt;
 		
 		$mail->Send();
+		ob_end_clean();
 	}
 }
