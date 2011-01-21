@@ -41,9 +41,9 @@
 	Don't show the site header/footer
 */
 
-define('SITE_ROOT', dirname(__FILE__));
+define('CODON_MODULES_PATH', dirname(__FILE__).'/core/modules');
+define('CODON_DEFAULT_MODULE', 'Frontpage');
 include 'core/codon.config.php';
-error_reporting(E_ALL ^ E_NOTICE);
  
 $BaseTemplate = new TemplateSet;
 
@@ -57,7 +57,7 @@ $BaseTemplate->template_path = SKINS_PATH;
 Template::Set('MODULE_NAV_INC', $NAVBAR);
 Template::Set('MODULE_HEAD_INC', $HTMLHead);
 
-MainController::RunAllActions(Config::Get('RUN_MODULE'));
+MainController::RunAllActions();
 
 # Force connection close
 DB::close();

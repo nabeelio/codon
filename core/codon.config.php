@@ -112,8 +112,7 @@ if(DBASE_NAME != '' && DBASE_SERVER != '' && DBASE_NAME != 'DBASE_NAME') {
 
 include CORE_PATH.DS.'bootstrap.inc.php';
 
-if(function_exists('pre_module_load'))
-{
+if(function_exists('pre_module_load')) {
 	pre_module_load();
 }
 
@@ -122,4 +121,4 @@ MainController::loadEngineTasks();
 if(function_exists('post_module_load'))
 	post_module_load();
 	
-define('SKINS_PATH', LIB_PATH.DS.'skins'.DS.CURRENT_SKIN);
+define('SKINS_PATH', LIB_PATH.DS.'skins'.DS.Config::get('CURRENT_SKIN'));
