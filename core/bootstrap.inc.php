@@ -17,24 +17,17 @@
  */
 
 function pre_module_load() {	
-	if(is_dir(CORE_PATH.'/local.config.php'))
-	{
+	if(is_dir(CORE_PATH.'/local.config.php')) {
 		Debug::showCritical('core/local.config.php is a folder, not a file. Please delete and create as a file');
 		die();
 	}
+
 }
 
 function post_module_load() {
-
-	// @TODO: Clean ACARS records older than one month
-	if(Config::Get('MAINTENANCE_MODE') == true) {
-		echo '<html><head><title>Down for maintenance - '.SITE_NAME.'</title></head><body>';
-		Debug::showCritical(Config::Get('MAINTENANCE_MESSAGE'), 'Down for maintenance');
-		echo '</body></html>';
-		die();
-	}
 		
    return true;
+
 }
 
 function url($path) {

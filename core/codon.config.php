@@ -51,9 +51,7 @@ define('TEMPLATES_PATH', CORE_PATH.DS.'templates');
 define('MODULES_PATH', CORE_PATH.DS.'modules');
 define('CACHE_PATH', CORE_PATH.DS.'cache');
 define('COMMON_PATH', CORE_PATH.DS.'common');
-define('PAGES_PATH', CORE_PATH.DS.'pages');
 define('LIB_PATH', SITE_ROOT.DS.'lib');
-define('DOCTRINE_MODELS_PATH', CORE_PATH.DS.'models');
 
 $version = phpversion();
 if($version[0] != '5') {
@@ -70,7 +68,7 @@ require CORE_PATH.DS.'app.config.php';
 @include CORE_PATH.DS.'local.config.php';
 
 /* Set the language */
-Lang::set_language(Config::Get('SITE_LANGUAGE'));
+#Lang::set_language(Config::Get('SITE_LANGUAGE'));
 
 error_reporting(Config::Get('ERROR_LEVEL'));
 Debug::$debug_enabled = Config::Get('DEBUG_MODE');
