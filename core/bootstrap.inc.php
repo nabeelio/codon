@@ -18,43 +18,122 @@
 
 function pre_module_load()
 {	
+	if(is_dir(CORE_PATH.'/local.config.php'))
+	{
+		Debug::showCritical('core/local.config.php is a folder, not a file. Please delete and create as a file');
+		die();
+	}
 	
+	if(!file_exists(CORE_PATH.'/local.config.php') || filesize(CORE_PATH.'/local.config.php') == 0)
+	{
+		Debug::showCritical('phpVMS has not been installed yet! Goto <a href="install/install.php">install/install.php</a> to start!');		
+		exit;
+	}
+	
+	SiteData::loadSiteSettings();
+	Auth::StartAuth();
 }
 
 function post_module_load()
 {
+	/* Misc tasks which need to get done */
+	
+	/* If the setting to auto-retired pilots is on, then do that
+		and only check every 24 hours
+	 */
+	 if(Config::Get('USE_CRON') == false)
+	 {
+		if(Config::Get('PILOT_AUTO_RETIRE') == true)
+		{
+			$within_timelimit = CronData::check_hoursdiff('find_retired_pilots', '24');
+			if($within_timelimit == false)
+			{
+				PilotData::findRetiredPilots();
+				CronData::set_lastupdate('find_retired_pilots');
+			}
+		}
+		
+		if(Config::Get('CLOSE_BIDS_AFTER_EXPIRE') === false)
+		{
+			$within_timelimit = CronData::check_hoursdiff('check_expired_bids', '24');
+			if($within_timelimit == false)
+			{
+				SchedulesData::deleteExpiredBids();
+				CronData::set_lastupdate('check_expired_bids');
+			}
+		}
+				
+		/* Expenses, make sure they're all populated */
+		$within_timelimit = CronData::check_hoursdiff('populate_expenses', 18);
+		if($within_timelimit === false)
+		{
+			FinanceData::updateAllExpenses();
+			CronData::set_lastupdate('populate_expenses');
+		}
+		
+		/* And finally, clear expired sessions */
+		Auth::clearExpiredSessions();
+	}
 
+	// @TODO: Clean ACARS records older than one month
+	if(Config::Get('MAINTENANCE_MODE') == true  
+		&& !Auth::LoggedIn() 
+		&& !PilotGroups::group_has_perm(Auth::$usergroups, FULL_ADMIN))
+	{
+		echo '<html><head><title>Down for maintenance - '.SITE_NAME.'</title></head><body>';
+		Debug::showCritical(Config::Get('MAINTENANCE_MESSAGE'), 'Down for maintenance');
+		echo '</body></html>';
+		die();
+	}
+		
    return true;
+}
+
+function adminurl($path)
+{
+	if($path[0] != '/')
+		$path='/'.$path;
+	
+	return SITE_URL.'/admin/index.php'.$path;
 }
 
 function url($path)
 {
-	$url = SITE_URL;
-		
 	if($path[0] != '/')
 		$path='/'.$path;
 			
 	if(Config::Get('URL_REWRITE') == true)
 	{
-		return $url.$path;
+		return SITE_URL.$path;
 	}
 		
-	return $url.'/index.php'.$path;
+	return SITE_URL.'/index.php'.$path;
+}
+
+function cndebug($txt)
+{
+	Debug::log($txt);
+}
+
+function adminaction($path)
+{
+	if($path[0] != '/')
+		$path='/'.$path;
+			
+	return SITE_URL.'/admin/action.php'.$path;
 }
 
 function actionurl($path)
 {
-	$url = SITE_URL;
-	
 	if($path[0] != '/')
 		$path='/'.$path;
 	
 	if(Config::Get('URL_REWRITE') == true)
 	{
-		return $url.$path;
+		return SITE_URL.$path;
 	}
 	
-	return $url.'/action.php'.$path;
+	return SITE_URL.'/action.php'.$path;
 }
 
 function fileurl($path)

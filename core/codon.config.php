@@ -56,8 +56,7 @@ define('LIB_PATH', SITE_ROOT.DS.'lib');
 define('DOCTRINE_MODELS_PATH', CORE_PATH.DS.'models');
 
 $version = phpversion();
-if($version[0] != '5')
-{
+if($version[0] != '5') {
 	die('You are not running PHP 5+');
 }
 
@@ -79,17 +78,20 @@ Debug::$debug_enabled = Config::Get('DEBUG_MODE');
 /* Init caching engine */
 CodonCache::init($cache_settings);
 
-if(DBASE_NAME != '' && DBASE_SERVER != '' && DBASE_NAME != 'DBASE_NAME')
-{
-	require CLASS_PATH.DS.'ezDB.class.php';
+if(DBASE_NAME != '' && DBASE_SERVER != '' && DBASE_NAME != 'DBASE_NAME') {
+	require CLASS_PATH.DS.'ezdb/ezdb.class.php';
 	
 	DB::$show_errors = Config::Get('DEBUG_MODE');
 	DB::$throw_exceptions = false;
 	
 	DB::init(DBASE_TYPE);
+	
+	DB::set_log_errors(Config::Get('DEBUG_MODE'));
+	DB::set_error_handler(array('Debug', 'db_error'));
+	
 	DB::set_caching(false);
 	DB::$table_prefix = TABLE_PREFIX;
-	DB::setCacheDir(CACHE_PATH);
+	DB::set_cache_dir(CACHE_PATH);
 	DB::$DB->debug_all = false;
 	
 	if(Config::Get('DEBUG_MODE') == true)
@@ -97,18 +99,15 @@ if(DBASE_NAME != '' && DBASE_SERVER != '' && DBASE_NAME != 'DBASE_NAME')
 	else
 		DB::hide_errors();
 		
-	if(!DB::connect(DBASE_USER, DBASE_PASS, DBASE_NAME, DBASE_SERVER))
-	{	
+	if(!DB::connect(DBASE_USER, DBASE_PASS, DBASE_NAME, DBASE_SERVER)) {	
 		Debug::showCritical(Lang::gs('database.connection.failed').' ('.DB::$errno.': '.DB::$error.')');
 		die();
 	}
 	
-	/* Include doctrine and all of it's options */
-	/*include CORE_PATH.DS.'lib'.DS.'doctrine'.DS.'Doctrine.php';
-	spl_autoload_register(array('Doctrine', 'autoload'));
-	$conn = Doctrine_Manager::connection(DBASE_TYPE.'://'.DBASE_USER.':'.DBASE_PASS.'@'.DBASE_SERVER.'/'.DBASE_NAME);
-	$conn->setAttribute(Doctrine::ATTR_MODEL_LOADING, Doctrine::MODEL_LOADING_CONSERVATIVE);
-	Doctrine::loadModels(DOCTRINE_MODELS_PATH);*/
+	# Set the charset type to send to mysql
+	if(Config::Get('DB_CHARSET_NAME') !== '') {
+		DB::query('SET NAMES \''.Config::Get('DB_CHARSET_NAME').'\'');
+	}
 }
 
 include CORE_PATH.DS.'bootstrap.inc.php';
@@ -122,5 +121,5 @@ MainController::loadEngineTasks();
 
 if(function_exists('post_module_load'))
 	post_module_load();
-
+	
 define('SKINS_PATH', LIB_PATH.DS.'skins'.DS.CURRENT_SKIN);
