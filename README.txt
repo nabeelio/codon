@@ -1,27 +1,21 @@
-phpVMS - Virtual Airline Administration Software
- Copyright (c) 2008 Nabeel Shahzad
+The MIT License
 
- phpVMS is licenced under the following license:
-   Creative Commons Attribution Non-commercial Share Alike (by-nc-sa)
-   View license.txt in the root, or visit:
-	http://creativecommons.org/licenses/by-nc-sa/3.0/
----
+Copyright (c) 2011 Nabeel Shahzad <https://github.com/nshahzad/codon>
 
-INSTALLATION
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-Upload to your site, create a database. Run the installer 
- in install/install.php
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
----
-
-UPGRADING
-
-Backup your core/local.config.php. Then, upload all of the files.
- Restore your core/local.config.php file. Run the updater in 
- install/update.php
-
----
-
- For more information, visit www.phpvms.net
-	Forums: http://forum.phpvms.net
-	Documentation: http://docs.phpvms.net
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
